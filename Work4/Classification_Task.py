@@ -165,17 +165,37 @@ for epoch in range(1, 1000):
 
             correct_samples = (y_prim_idx == y_idx) * 1.0
             acc = np.mean(correct_samples)
-            accs.append(acc)
+            conf_matrix = np.zeros((4, 4))
 
-            for elem in correct_samples:
-                if elem:
-                    tp += 1
-                    tn += 3
-                else:
-                    fp += 1
-                    fn += 1
-                    tn += 2
-            f1s = (2 * tp) / (2*tp + fp + fn)
+            for i in range(len(y_idx)):
+                conf_matrix[y_prim_idx[i]][y_idx[i]] += 1
+
+            temp_mat = np.zeros((4,4))
+            for j in range(4):
+                for i in range(4):
+                    if j == 0:
+                        for m in range(4):
+                            if i == m:
+                                temp_mat[i][j] = conf_matrix[i][m]
+                    elif j == 1:
+                        for m in range(4):
+                            if m != i:
+                                temp_mat[i][j] += conf_matrix[i][m]
+                    elif j == 2:
+                        for m in range(4):
+                            if m != i:
+                                temp_mat[i][j] += conf_matrix[m][i]
+                    elif j == 3:
+                        for m in range(4):
+                            for k in range(4):
+                                if m != i and k != i:
+                                    temp_mat[i][j] += conf_matrix[m][k]
+
+
+            f1 = np.zeros(4)
+            for i in range(len(f1)):
+                f1[i] = (2 * temp_mat[i][0]) / (2 * temp_mat[i][0] + temp_mat[i][1] + temp_mat[i][2] + 1e-8)
+            f1s = np.mean(f1)
             accs.append(f1s)
 
             if dataloader == dataloader_train:
@@ -183,11 +203,6 @@ for epoch in range(1, 1000):
                 optimizer.step()
                 optimizer.zero_grad()
 
-
-        conf_matrix = np.array([
-            [tp, fn],
-            [fp, tn]
-        ])
 
         if dataloader == dataloader_train:
             loss_plot_train.append(np.mean(losses))
